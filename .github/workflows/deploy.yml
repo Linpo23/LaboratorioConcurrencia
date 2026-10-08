@@ -1,0 +1,78 @@
+﻿name: Continuous Integration and Deployment (CI/CD)
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Checkout del código
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      # 2. Configurar Autenticación con GCP
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      # 3. Configurar herramientas de GCP (gcloud / gsutil)
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v1
+
+      # 4. Configurar Docker con Artifact Registry
+      - name: Authorize Docker for GCP
+        run: gcloud auth configure-docker ${{ secrets.GCP_REGION }}-docker.pkg.dev --quiet
+
+      # 5. Instalar dependencias y compilar .NET (Backend)
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Install Dependencies
+        run: dotnet restore
+
+      - name: Build .NET Project
+        run: dotnet build --configuration Release --no-restore
+
+      # 6. Construir y Publicar Imagen Docker en Artifact Registry
+      - name: Build and Push Docker Image
+        run: |
+          IMAGE_URI="${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/laboratorio-concurrencia-repo/api:latest"
+          docker build -t $IMAGE_URI .
+          docker push $IMAGE_URI
+
+      # 7. Ejecutar Terraform (Infraestructura como Código)
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+
+      - name: Terraform Init
+        run: terraform init
+        working-directory: ./terraform
+
+      - name: Terraform Validate
+        run: terraform validate
+        working-directory: ./terraform
+
+      - name: Terraform Plan
+        run: |
+          terraform plan \
+            -var="gcp_project_id=${{ secrets.GCP_PROJECT_ID }}" \
+            -var="gcp_region=${{ secrets.GCP_REGION }}" \
+            -var="database_url=${{ secrets.DATABASE_URL }}" \
+            -var="jwt_secret=${{ secrets.JWT_SECRET }}"
+        working-directory: ./terraform
+
+      - name: Terraform Apply
+        run: |
+          terraform apply -auto-approve \
+            -var="gcp_project_id=${{ secrets.GCP_PROJECT_ID }}" \
+            -var="gcp_region=${{ secrets.GCP_REGION }}" \
+            -var="database_url=${{ secrets.DATABASE_URL }}" \
+            -var="jwt_secret=${{ secrets.JWT_SECRET }}"
+        working-directory: ./terraform
