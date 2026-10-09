@@ -1,4 +1,10 @@
-﻿# 1. Habilitar APIs necesarias
+﻿# Configuración del Proveedor GCP
+provider "google" {
+  project = "laboratorio-concurrencia"
+  region  = var.gcp_region
+}
+
+# 1. Habilitar APIs necesarias
 resource "google_project_service" "apis" {
   for_each = toset([
     "run.googleapis.com",
@@ -134,30 +140,18 @@ resource "google_cloud_run_service_iam_member" "public_access" {
   role     = "roles/run.invoker"
   member   = "allUsers"
 }
-# Importar Artifact Registry existente
-import {
-  to = google_artifact_registry_repository.repo
-  id = "projects/laboratorio-concurrencia/locations/${var.gcp_region}/repositories/laboratorio-concurrencia-repo"
-}
 
-# Importar Service Account existente
-import {
-  to = google_service_account.app_sa
-  id = "projects/laboratorio-concurrencia/serviceAccounts/sa-backend-api@laboratorio-concurrencia.iam.gserviceaccount.com"
-}
-# Importar Service Account existente
+# BLOQUE ÚNICO DE IMPORTS
 import {
   to = google_service_account.app_sa
   id = "projects/laboratorio-concurrencia/serviceAccounts/sa-backend-api@laboratorio-concurrencia.iam.gserviceaccount.com"
 }
 
-# Importar Secret Manager: JWT Secret
 import {
   to = google_secret_manager_secret.jwt_secret
   id = "projects/laboratorio-concurrencia/secrets/jwt-secret"
 }
 
-# Importar Secret Manager: Database URL
 import {
   to = google_secret_manager_secret.db_url
   id = "projects/laboratorio-concurrencia/secrets/database-url"
