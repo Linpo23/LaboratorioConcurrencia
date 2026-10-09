@@ -40,14 +40,25 @@ jobs:
       - name: Build .NET Project
         run: dotnet build --configuration Release --no-restore
 
-     # 6. Construir y Publicar Imagen Docker en Artifact Registry
+      # 6. Construir y Publicar Imagen Docker en Artifact Registry
       - name: Build and Push Docker Image
         run: |
           IMAGE_URI="${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/laboratorio-concurrencia-repo/api:latest"
           docker build -t $IMAGE_URI .
           docker push $IMAGE_URI
-         
-# 7. Ejecutar Terraform (Infraestructura como Código)
+
+      # 7. Diagnóstico previo de variables de entorno
+      - name: Verify Secret Presence
+        env:
+          GCP_PROJECT: "${{ secrets.GCP_PROJECT_ID }}"
+        run: |
+          if [ -z "$GCP_PROJECT" ]; then
+            echo "ERROR CRITICO: GCP_PROJECT_ID esta vacio o no existe en GitHub Secrets."
+            exit 1
+          fi
+          echo "Secreto GCP_PROJECT_ID detectado correctamente."
+
+      # 8. Ejecutar Terraform (Infraestructura como Código)
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2
 
