@@ -40,7 +40,7 @@ jobs:
       - name: Build .NET Project
         run: dotnet build --configuration Release --no-restore
 
-      # 6. Construir y Publicar Imagen Docker en Artifact Registry
+     # 6. Construir y Publicar Imagen Docker en Artifact Registry
       - name: Build and Push Docker Image
         run: |
           IMAGE_URI="${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/laboratorio-concurrencia-repo/api:latest"
@@ -62,17 +62,17 @@ jobs:
       - name: Terraform Plan
         working-directory: ./terraform
         env:
-          TF_VAR_gcp_project_id: ${{ secrets.GCP_PROJECT_ID }}
-          TF_VAR_gcp_region: ${{ secrets.GCP_REGION }}
-          TF_VAR_database_url: ${{ secrets.DATABASE_URL }}
-          TF_VAR_jwt_secret: ${{ secrets.JWT_SECRET }}
+          TF_VAR_gcp_project_id: "${{ secrets.GCP_PROJECT_ID }}"
+          TF_VAR_gcp_region: "${{ secrets.GCP_REGION }}"
+          TF_VAR_database_url: "${{ secrets.DATABASE_URL }}"
+          TF_VAR_jwt_secret: "${{ secrets.JWT_SECRET }}"
         run: terraform plan
 
       - name: Terraform Apply
         working-directory: ./terraform
         env:
-          TF_VAR_gcp_project_id: ${{ secrets.GCP_PROJECT_ID }}
-          TF_VAR_gcp_region: ${{ secrets.GCP_REGION }}
-          TF_VAR_database_url: ${{ secrets.DATABASE_URL }}
-          TF_VAR_jwt_secret: ${{ secrets.JWT_SECRET }}
+          TF_VAR_gcp_project_id: "${{ secrets.GCP_PROJECT_ID }}"
+          TF_VAR_gcp_region: "${{ secrets.GCP_REGION }}"
+          TF_VAR_database_url: "${{ secrets.DATABASE_URL }}"
+          TF_VAR_jwt_secret: "${{ secrets.JWT_SECRET }}"
         run: terraform apply -auto-approve
