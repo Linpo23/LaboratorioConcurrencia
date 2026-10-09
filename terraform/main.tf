@@ -156,3 +156,8 @@ import {
   to = google_secret_manager_secret.db_url
   id = "projects/laboratorio-concurrencia/secrets/database-url"
 }
+# AGREGAR ESTE BLOQUE:
+import {
+  to = google_artifact_registry_repository.repo
+  id = "projects/laboratorio-concurrencia/locations/us-central1/repositories/laboratorio-concurrencia-repo"
+}
