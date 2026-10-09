@@ -42,7 +42,15 @@ resource "google_project_iam_member" "sa_roles" {
 # 4. Secret Manager (JWT Secret y DB Connection)
 resource "google_secret_manager_secret" "jwt_secret" {
   secret_id = "jwt-secret"
-  replication { auto {} }
+
+  replication {
+    user_managed {
+      replicas {
+        location = var.region
+      }
+    }
+  }
+
   depends_on = [google_project_service.apis]
 }
 
@@ -53,13 +61,16 @@ resource "google_secret_manager_secret_version" "jwt_secret_val" {
 
 resource "google_secret_manager_secret" "db_url" {
   secret_id = "database-url"
-  replication { auto {} }
-  depends_on = [google_project_service.apis]
-}
 
-resource "google_secret_manager_secret_version" "db_url_val" {
-  secret      = google_secret_manager_secret.db_url.id
-  secret_data = var.database_url
+  replication {
+    user_managed {
+      replicas {
+        location = var.region
+      }
+    }
+  }
+
+  depends_on = [google_project_service.apis]
 }
 
 # 5. Cloud Run Service (.NET API)
