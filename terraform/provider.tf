@@ -9,6 +9,6 @@
 }
 
 provider "google" {
-  project = var.gcp_project_id
+  project = "laboratorio-concurrencia"
   region  = var.gcp_region
 }

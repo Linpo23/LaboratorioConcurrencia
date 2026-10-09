@@ -1,10 +1,4 @@
-﻿# Configuración del Proveedor GCP
-provider "google" {
-  project = "laboratorio-concurrencia"
-  region  = var.gcp_region
-}
-
-# 1. Habilitar APIs necesarias
+﻿# 1. Habilitar APIs necesarias
 resource "google_project_service" "apis" {
   for_each = toset([
     "run.googleapis.com",
