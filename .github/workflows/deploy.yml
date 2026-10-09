@@ -46,18 +46,18 @@ jobs:
           IMAGE_URI="${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/laboratorio-concurrencia-repo/api:latest"
           docker build -t $IMAGE_URI .
           docker push $IMAGE_URI
-
-      # 7. Ejecutar Terraform (Infraestructura como Código)
+         
+# 7. Ejecutar Terraform (Infraestructura como Código)
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2
 
       - name: Terraform Init
-        run: terraform init
         working-directory: ./terraform
+        run: terraform init
 
       - name: Terraform Validate
-        run: terraform validate
         working-directory: ./terraform
+        run: terraform validate
 
       - name: Terraform Plan
         working-directory: ./terraform
