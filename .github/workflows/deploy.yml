@@ -60,19 +60,19 @@ jobs:
         working-directory: ./terraform
 
       - name: Terraform Plan
+        working-directory: ./terraform
         run: |
           terraform plan \
             -var="gcp_project_id=${{ secrets.GCP_PROJECT_ID }}" \
             -var="gcp_region=${{ secrets.GCP_REGION }}" \
             -var="database_url=${{ secrets.DATABASE_URL }}" \
             -var="jwt_secret=${{ secrets.JWT_SECRET }}"
-        working-directory: ./terraform
 
       - name: Terraform Apply
+        working-directory: ./terraform
         run: |
           terraform apply -auto-approve \
             -var="gcp_project_id=${{ secrets.GCP_PROJECT_ID }}" \
             -var="gcp_region=${{ secrets.GCP_REGION }}" \
             -var="database_url=${{ secrets.DATABASE_URL }}" \
             -var="jwt_secret=${{ secrets.JWT_SECRET }}"
-        working-directory: ./terraform
