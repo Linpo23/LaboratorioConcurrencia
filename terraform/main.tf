@@ -161,3 +161,7 @@ import {
   to = google_artifact_registry_repository.repo
   id = "projects/laboratorio-concurrencia/locations/us-central1/repositories/laboratorio-concurrencia-repo"
 }
+import {
+  to = google_cloud_run_v2_service.api_service
+  id = "projects/laboratorio-concurrencia/locations/us-central1/services/api-backend-service"
+}
