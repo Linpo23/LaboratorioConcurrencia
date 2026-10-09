@@ -145,3 +145,20 @@ import {
   to = google_service_account.app_sa
   id = "projects/laboratorio-concurrencia/serviceAccounts/sa-backend-api@laboratorio-concurrencia.iam.gserviceaccount.com"
 }
+# Importar Service Account existente
+import {
+  to = google_service_account.app_sa
+  id = "projects/laboratorio-concurrencia/serviceAccounts/sa-backend-api@laboratorio-concurrencia.iam.gserviceaccount.com"
+}
+
+# Importar Secret Manager: JWT Secret
+import {
+  to = google_secret_manager_secret.jwt_secret
+  id = "projects/laboratorio-concurrencia/secrets/jwt-secret"
+}
+
+# Importar Secret Manager: Database URL
+import {
+  to = google_secret_manager_secret.db_url
+  id = "projects/laboratorio-concurrencia/secrets/database-url"
+}
