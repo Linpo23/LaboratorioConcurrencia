@@ -38,17 +38,12 @@ resource "google_project_iam_member" "sa_roles" {
   role    = each.key
   member  = "serviceAccount:${google_service_account.app_sa.email}"
 }
-
 # 4. Secret Manager (JWT Secret y DB Connection)
 resource "google_secret_manager_secret" "jwt_secret" {
   secret_id = "jwt-secret"
 
   replication {
-    user_managed {
-      replicas {
-        location = var.region
-      }
-    }
+    auto {}
   }
 
   depends_on = [google_project_service.apis]
@@ -63,16 +58,16 @@ resource "google_secret_manager_secret" "db_url" {
   secret_id = "database-url"
 
   replication {
-    user_managed {
-      replicas {
-        location = var.region
-      }
-    }
+    auto {}
   }
 
   depends_on = [google_project_service.apis]
 }
 
+resource "google_secret_manager_secret_version" "db_url_val" {
+  secret      = google_secret_manager_secret.db_url.id
+  secret_data = var.database_url
+}
 # 5. Cloud Run Service (.NET API)
 resource "google_cloud_run_v2_service" "api_service" {
   name     = "api-backend-service"
