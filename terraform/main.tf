@@ -161,7 +161,3 @@ import {
   to = google_artifact_registry_repository.repo
   id = "projects/laboratorio-concurrencia/locations/us-central1/repositories/laboratorio-concurrencia-repo"
 }
-output "cloud_run_url" {
-  value       = google_cloud_run_v2_service.api_service.uri
-  description = "URL pública de la API en Cloud Run"
-}
