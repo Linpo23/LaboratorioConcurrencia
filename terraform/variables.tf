@@ -1,6 +1,7 @@
 ﻿variable "gcp_project_id" {
   type        = string
   description = "ID del Proyecto de Google Cloud"
+  default ="laboratorio-concurrencia"
 }
 
 variable "gcp_region" {
