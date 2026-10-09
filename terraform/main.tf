@@ -134,3 +134,14 @@ resource "google_cloud_run_service_iam_member" "public_access" {
   role     = "roles/run.invoker"
   member   = "allUsers"
 }
+# Importar Artifact Registry existente
+import {
+  to = google_artifact_registry_repository.repo
+  id = "projects/laboratorio-concurrencia/locations/${var.gcp_region}/repositories/laboratorio-concurrencia-repo"
+}
+
+# Importar Service Account existente
+import {
+  to = google_service_account.app_sa
+  id = "projects/laboratorio-concurrencia/serviceAccounts/sa-backend-api@laboratorio-concurrencia.iam.gserviceaccount.com"
+}
