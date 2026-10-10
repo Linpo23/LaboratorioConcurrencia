@@ -18,7 +18,7 @@ public class UploadController : ControllerBase
         if (file == null || file.Length == 0)
             return BadRequest(new { message = "Archivo vacío" });
 
-        // Usa WebRootPath si existe; si no, recurre a ContentRootPath/wwwroot
+        // Usa WebRootPath si existe; si no, recurre a ContentRootPath/wwwroot aqui es el tema de la imagenen el list
         string webRoot = _env.WebRootPath ?? Path.Combine(_env.ContentRootPath, "wwwroot");
         string uploadsFolder = Path.Combine(webRoot, "uploads");
 
