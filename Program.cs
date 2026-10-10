@@ -41,13 +41,12 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-    string dataDir = Path.Combine(Directory.GetCurrentDirectory(), "Data");
+    /*string dataDir = Path.Combine(Directory.GetCurrentDirectory(), "Data");
     if (!Directory.Exists(dataDir))
     {
         Directory.CreateDirectory(dataDir);
-    }
-
-    db.Database.EnsureCreated();
+    }*/
+    db.Database.Migrate();
 }
 
 app.UseStaticFiles();
