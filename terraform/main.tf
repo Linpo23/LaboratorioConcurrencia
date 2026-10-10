@@ -165,3 +165,12 @@ import {
   to = google_cloud_run_v2_service.api_service
   id = "projects/laboratorio-concurrencia/locations/us-central1/services/api-backend-service"
 }
+
+#pregunta del profe 
+env {
+  name  = "NOTIFICACION_CORREO"
+  value = var.notificacion_correo
+}
+
+
+#otra pregunta del profe
