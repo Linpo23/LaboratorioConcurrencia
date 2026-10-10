@@ -14,7 +14,7 @@ builder.WebHost.UseUrls("http://0.0.0.0:5030");
 builder.Services.AddControllers();
 
 // 2. Conectar a PostgreSQL (Neon Tech)
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? builder.Configuration["Database_URL"];
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? builder.Configuration["DATABASE_URL"];
 builder.Services.AddDbContext<AppDbContext>(opt =>
     opt.UseNpgsql(connectionString));
 
