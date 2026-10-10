@@ -12,9 +12,10 @@ builder.WebHost.UseUrls("http://0.0.0.0:5030");
 // 1. Habilitar Controllers
 builder.Services.AddControllers();
 
-// 2. Registrar SQLite
+// 2. Conectar a PostgreSQL (Neon Tech)
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddDbContext<AppDbContext>(opt =>
-    opt.UseSqlite("Data Source=Data/app.db"));
+    opt.UseNpgsql(connectionString));
 
 // 3. Configuración de JWT
 var jwtKey = builder.Configuration["Jwt:Key"] ?? "ClaveSuperSecretaDeMasDe32Caracteres!";

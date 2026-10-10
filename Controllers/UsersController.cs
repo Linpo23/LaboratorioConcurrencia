@@ -19,7 +19,7 @@ public class UsersController : ControllerBase
     }
 
     // 1. READ ALL (GET: api/users)
-    [AllowAnonymous]
+    //[AllowAnonymous]
     [HttpGet]
     public async Task<IActionResult> GetUsers()
     {
@@ -37,7 +37,7 @@ public class UsersController : ControllerBase
 
     // 3. CREATE (POST: api/users)
     [HttpPost]
-    [AllowAnonymous] // Permite registro inicial sin hay token 
+    //[AllowAnonymous] // Permite registro inicial sin hay token 
     public async Task<IActionResult> CreateUser([FromBody] CreateUserDto dto)
     {
         var nuevoUsuario = new User
@@ -58,7 +58,7 @@ public class UsersController : ControllerBase
     }
 
     // 4. UPDATE (PUT: api/users/{id})
-    [AllowAnonymous]
+    //[AllowAnonymous]
     [HttpPut("{id}")]
     public async Task<IActionResult> UpdateUser(int id, [FromBody] CreateUserDto dto)
     {
@@ -83,7 +83,7 @@ public class UsersController : ControllerBase
     }
 
     // 5. DELETE (DELETE: api/users/{id})
-    [AllowAnonymous]
+   // [AllowAnonymous]
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteUser(int id)
     {
