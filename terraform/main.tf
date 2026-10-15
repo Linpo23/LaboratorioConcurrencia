@@ -174,7 +174,7 @@ resource "google_pubsub_topic" "notifications_topic" {
 # Servicio Cloud Run para enviar las notificaciones
 resource "google_cloud_run_v2_service" "notification_service" {
   name     = "notification-cloud-run"
-  location = var.region
+  location = var.gcp_region
 
   template {
     containers {
