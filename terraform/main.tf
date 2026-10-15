@@ -167,16 +167,12 @@ import {
 }
 # Tópico de Pub/Sub para notificaciones
 resource "google_pubsub_topic" "notifications_topic" {
-  name = "notification-email-topic"
-
-  lifecycle {
-    ignore_changes = all
-  }
+  name = "notification-email-topic-v2"
 }
 
 # Servicio Cloud Run para enviar las notificaciones
 resource "google_cloud_run_v2_service" "notification_service" {
-  name     = "notification-cloud-run"
+  name     = "notification-cloud-run-v2"
   location = var.gcp_region
 
   template {
@@ -193,20 +189,12 @@ resource "google_cloud_run_v2_service" "notification_service" {
       }
     }
   }
-
-  lifecycle {
-    ignore_changes = all
-  }
 }
 
 # Service Account para permitir que Pub/Sub invoque Cloud Run
 resource "google_service_account" "pubsub_invoker" {
-  account_id   = "pubsub-cloudrun-invoker"
+  account_id   = "pubsub-cloudrun-invoker-v2"
   display_name = "PubSub Cloud Run Invoker SA"
-
-  lifecycle {
-    ignore_changes = all
-  }
 }
 
 resource "google_cloud_run_v2_service_iam_member" "invoker_role" {
@@ -218,7 +206,7 @@ resource "google_cloud_run_v2_service_iam_member" "invoker_role" {
 
 # Suscripción Push de Pub/Sub hacia Cloud Run Notificaciones
 resource "google_pubsub_subscription" "notification_sub" {
-  name  = "notification-email-sub"
+  name  = "notification-email-sub-v2"
   topic = google_pubsub_topic.notifications_topic.name
 
   push_config {

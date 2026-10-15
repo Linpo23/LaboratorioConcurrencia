@@ -64,7 +64,7 @@ app.MapPost("api/notifications/send", async (NotificationRequest req, IConfigura
     try
     {
         string projectId = config["GCP_PROJECT_ID"] ?? "laboratorio-concurrencia";
-        string topicId = config["PUBSUB_TOPIC_ID"] ?? "notification-email-topic";
+        string topicId = config["PUBSUB_TOPIC_ID"] ?? "notification-email-topic-v2";
 
         TopicName topicName = TopicName.FromProjectTopic(projectId, topicId);
         PublisherClient publisher = await PublisherClient.CreateAsync(topicName);
