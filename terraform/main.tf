@@ -165,6 +165,7 @@ import {
   to = google_cloud_run_v2_service.api_service
   id = "projects/laboratorio-concurrencia/locations/us-central1/services/api-backend-service"
 }
+
 # Tópico de Pub/Sub para notificaciones
 resource "google_pubsub_topic" "notifications_topic" {
   name = "notification-email-topic-v2"
@@ -216,4 +217,21 @@ resource "google_pubsub_subscription" "notification_sub" {
       service_account_email = google_service_account.pubsub_invoker.email
     }
   }
+}
+# 1. Importar el Topic existente
+import {
+  to = google_pubsub_topic.notifications_topic
+  id = "projects/laboratorio-concurrencia/topics/notification-email-topic-v2"
+}
+
+# 2. Importar el Cloud Run existente
+import {
+  to = google_cloud_run_v2_service.notification_service
+  id = "projects/laboratorio-concurrencia/locations/var.gcp_region/services/notification-cloud-run-v2"
+}
+
+# 3. Importar la Service Account existente
+import {
+  to = google_service_account.pubsub_invoker
+  id = "projects/laboratorio-concurrencia/serviceAccounts/pubsub-cloudrun-invoker-v2@TU_PROJECT_ID.iam.gserviceaccount.com"
 }
