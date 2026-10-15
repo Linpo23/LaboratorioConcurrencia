@@ -227,7 +227,7 @@ import {
 # 2. Importar el Cloud Run existente
 import {
   to = google_cloud_run_v2_service.notification_service
-  id = "projects/laboratorio-concurrencia/locations/var.gcp_region/services/notification-cloud-run-v2"
+  id = "projects/laboratorio-concurrencia/locations/us-central1/services/notification-cloud-run-v2"
 }
 
 # 3. Importar la Service Account existente
