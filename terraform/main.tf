@@ -4,13 +4,6 @@ provider "google" {
   region  = var.gcp_region
 }
 
-# Variable de sufijo para versionar recursos y evitar conflictos 409
-variable "resource_suffix" {
-  type        = string
-  default     = "v3"
-  description = "Sufijo para asegurar nombres únicos en GCP"
-}
-
 # 1. Habilitar APIs necesarias
 resource "google_project_service" "apis" {
   for_each = toset([
@@ -20,8 +13,7 @@ resource "google_project_service" "apis" {
     "sqladmin.googleapis.com",
     "apigateway.googleapis.com",
     "cloudbuild.googleapis.com",
-    "logging.googleapis.com",
-    "pubsub.googleapis.com"
+    "logging.googleapis.com"
   ])
   project            = "laboratorio-concurrencia"
   service            = each.key
@@ -38,7 +30,7 @@ resource "google_artifact_registry_repository" "repo" {
   depends_on    = [google_project_service.apis]
 }
 
-# 3. Service Account e IAM Roles para la API Backend
+# 3. Service Account e IAM Roles
 resource "google_service_account" "app_sa" {
   project      = "laboratorio-concurrencia"
   account_id   = "sa-backend-api"
@@ -89,7 +81,7 @@ resource "google_secret_manager_secret_version" "db_url_val" {
   secret_data = var.database_url
 }
 
-# 5. Cloud Run Service (.NET API principal)
+# 5. Cloud Run Service (.NET API)
 resource "google_cloud_run_v2_service" "api_service" {
   project  = "laboratorio-concurrencia"
   name     = "api-backend-service"
@@ -140,29 +132,48 @@ resource "google_cloud_run_v2_service" "api_service" {
   ]
 }
 
-# Habilitar acceso público no autenticado a Cloud Run API
-resource "google_cloud_run_v2_service_iam_member" "public_access" {
+# Habilitar acceso público no autenticado a Cloud Run
+resource "google_cloud_run_service_iam_member" "public_access" {
   project  = "laboratorio-concurrencia"
   location = google_cloud_run_v2_service.api_service.location
-  name     = google_cloud_run_v2_service.api_service.name
+  service  = google_cloud_run_v2_service.api_service.name
   role     = "roles/run.invoker"
   member   = "allUsers"
 }
 
-# ==============================================================================
-# SECCIÓN DE NOTIFICACIONES ASÍNCRONAS (PUB/SUB + CLOUD RUN CONSUMER)
-# ==============================================================================
+# BLOQUE ÚNICO DE IMPORTS
+import {
+  to = google_service_account.app_sa
+  id = "projects/laboratorio-concurrencia/serviceAccounts/sa-backend-api@laboratorio-concurrencia.iam.gserviceaccount.com"
+}
+
+import {
+  to = google_secret_manager_secret.jwt_secret
+  id = "projects/laboratorio-concurrencia/secrets/jwt-secret"
+}
+
+import {
+  to = google_secret_manager_secret.db_url
+  id = "projects/laboratorio-concurrencia/secrets/database-url"
+}
+# AGREGAR ESTE BLOQUE:
+import {
+  to = google_artifact_registry_repository.repo
+  id = "projects/laboratorio-concurrencia/locations/us-central1/repositories/laboratorio-concurrencia-repo"
+}
+import {
+  to = google_cloud_run_v2_service.api_service
+  id = "projects/laboratorio-concurrencia/locations/us-central1/services/api-backend-service"
+}
 
 # Tópico de Pub/Sub para notificaciones
 resource "google_pubsub_topic" "notifications_topic" {
-  project = "laboratorio-concurrencia"
-  name    = "notification-email-topic-${var.resource_suffix}"
+  name = "notification-email-topic-v2"
 }
 
-# Servicio Cloud Run para enviar las notificaciones (Consumidor SMTP)
+# Servicio Cloud Run para enviar las notificaciones
 resource "google_cloud_run_v2_service" "notification_service" {
-  project  = "laboratorio-concurrencia"
-  name     = "notification-cloud-run-${var.resource_suffix}"
+  name     = "notification-cloud-run-v2"
   location = var.gcp_region
 
   template {
@@ -183,13 +194,11 @@ resource "google_cloud_run_v2_service" "notification_service" {
 
 # Service Account para permitir que Pub/Sub invoque Cloud Run
 resource "google_service_account" "pubsub_invoker" {
-  project      = "laboratorio-concurrencia"
-  account_id   = "pubsub-invoker-${var.resource_suffix}"
+  account_id   = "pubsub-cloudrun-invoker-v2"
   display_name = "PubSub Cloud Run Invoker SA"
 }
 
 resource "google_cloud_run_v2_service_iam_member" "invoker_role" {
-  project  = "laboratorio-concurrencia"
   location = google_cloud_run_v2_service.notification_service.location
   name     = google_cloud_run_v2_service.notification_service.name
   role     = "roles/run.invoker"
@@ -198,9 +207,8 @@ resource "google_cloud_run_v2_service_iam_member" "invoker_role" {
 
 # Suscripción Push de Pub/Sub hacia Cloud Run Notificaciones
 resource "google_pubsub_subscription" "notification_sub" {
-  project = "laboratorio-concurrencia"
-  name    = "notification-email-sub-${var.resource_suffix}"
-  topic   = google_pubsub_topic.notifications_topic.name
+  name  = "notification-email-sub-v2"
+  topic = google_pubsub_topic.notifications_topic.name
 
   push_config {
     push_endpoint = google_cloud_run_v2_service.notification_service.uri
@@ -209,4 +217,21 @@ resource "google_pubsub_subscription" "notification_sub" {
       service_account_email = google_service_account.pubsub_invoker.email
     }
   }
+}
+# 1. Importar el Topic existente
+import {
+  to = google_pubsub_topic.notifications_topic
+  id = "projects/laboratorio-concurrencia/topics/notification-email-topic-v2"
+}
+
+# 2. Importar el Cloud Run existente
+import {
+  to = google_cloud_run_v2_service.notification_service
+  id = "projects/laboratorio-concurrencia/locations/var.gcp_region/services/notification-cloud-run-v2"
+}
+
+# 3. Importar la Service Account existente
+import {
+  to = google_service_account.pubsub_invoker
+  id = "projects/laboratorio-concurrencia/serviceAccounts/pubsub-cloudrun-invoker-v2@laboratorio-concurrencia.iam.gserviceaccount.com"
 }
