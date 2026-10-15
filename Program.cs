@@ -4,7 +4,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using LaboratorioConcurrencia.Data;
 using Microsoft.EntityFrameworkCore.Storage;
-using Google.Cloud.PubSub.V1;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -19,7 +18,7 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 builder.Services.AddDbContext<AppDbContext>(opt =>
     opt.UseNpgsql(connectionString));
 
-// 3. Configuración de JWT (Se especifica System.Text.Encoding para evitar la ambigüedad)
+// 3. Configuración de JWT
 var jwtKey = builder.Configuration["Jwt:Key"] ?? "ClaveSuperSecretaDeMasDe32Caracteres!";
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -38,61 +37,19 @@ builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
-// 4. Crear la BD y asegurar la carpeta Data al iniciar
+// 4. Migración de Base de Datos
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-
-    /*string dataDir = Path.Combine(Directory.GetCurrentDirectory(), "Data");
-    if (!Directory.Exists(dataDir))
-    {
-        Directory.CreateDirectory(dataDir);
-    }*/
     db.Database.Migrate();
 }
-
-// 5. Crear notificación de correo (Endpoint Pub/Sub)
-app.MapPost("api/notifications/send", async (NotificationRequest req, IConfiguration config, ILogger<Program> logger) =>
-{
-    if (string.IsNullOrWhiteSpace(req.Email) ||
-        string.IsNullOrWhiteSpace(req.Subject) ||
-        string.IsNullOrWhiteSpace(req.Message))
-    {
-        return Results.BadRequest(new { message = "Todos los campos son obligatorios." });
-    }
-
-    try
-    {
-        string projectId = config["GCP_PROJECT_ID"] ?? "laboratorio-concurrencia";
-        string topicId = config["PUBSUB_TOPIC_ID"] ?? "notification-email-topic-v2";
-
-        TopicName topicName = TopicName.FromProjectTopic(projectId, topicId);
-        PublisherClient publisher = await PublisherClient.CreateAsync(topicName);
-
-        string messageJson = JsonSerializer.Serialize(req);
-        string messageId = await publisher.PublishAsync(messageJson);
-
-        logger.LogInformation("Mensaje publicado en Pub/Sub con ID: {MessageId}", messageId);
-
-        return Results.Ok(new { message = "Mensaje enviado a la cola de procesamiento", messageId });
-    }
-    catch (Exception ex)
-    {
-        logger.LogError(ex, "Error al publicar mensaje en Pub/Sub");
-        return Results.Problem("Error interno al procesar la notificación.");
-    }
-    // Lógica para publicar en Pub/Sub
-    return Results.Ok();
-}).AllowAnonymous();
 
 app.UseStaticFiles();
 
 app.UseAuthentication();
 app.UseAuthorization();
 
+// 5. Mapeo de Controladores (AQUÍ se registran las rutas de Controllers como NotificationsController)
 app.MapControllers();
 
 app.Run();
-
-// DTO para recibir la solicitud del correo
-public record NotificationRequest(string Email, string Subject, string Message);
