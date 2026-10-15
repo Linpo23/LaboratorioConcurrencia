@@ -235,3 +235,7 @@ import {
   to = google_service_account.pubsub_invoker
   id = "projects/laboratorio-concurrencia/serviceAccounts/pubsub-cloudrun-invoker-v2@laboratorio-concurrencia.iam.gserviceaccount.com"
 }
+import {
+  to = google_pubsub_subscription.notification_sub
+  id = "projects/laboratorio-concurrencia/subscriptions/notification-email-sub-v2"
+}
