@@ -166,11 +166,55 @@ import {
   id = "projects/laboratorio-concurrencia/locations/us-central1/services/api-backend-service"
 }
 
-#pregunta del profe 
-env {
-  name  = "NOTIFICACION_CORREO"
-  value = var.notificacion_correo
+# Tópico de Pub/Sub para notificaciones
+resource "google_pubsub_topic" "notifications_topic" {
+  name = "notification-email-topic"
 }
 
+# Servicio Cloud Run para enviar las notificaciones
+resource "google_cloud_run_v2_service" "notification_service" {
+  name     = "notification-cloud-run"
+  location = var.region
 
-#otra pregunta del profe
+  template {
+    containers {
+      image = var.notification_image
+
+      env {
+        name  = "SMTP_USER"
+        value = var.smtp_user
+      }
+      env {
+        name  = "SMTP_PASSWORD"
+        value = var.smtp_password
+      }
+    }
+  }
+}
+
+# Service Account para permitir que Pub/Sub invoque Cloud Run
+resource "google_service_account" "pubsub_invoker" {
+  account_id   = "pubsub-cloudrun-invoker"
+  display_name = "PubSub Cloud Run Invoker SA"
+}
+
+resource "google_cloud_run_v2_service_iam_member" "invoker_role" {
+  location = google_cloud_run_v2_service.notification_service.location
+  name     = google_cloud_run_v2_service.notification_service.name
+  role     = "roles/run.invoker"
+  member   = "serviceAccount:${google_service_account.pubsub_invoker.email}"
+}
+
+# Suscripción Push de Pub/Sub hacia Cloud Run Notificaciones
+resource "google_pubsub_subscription" "notification_sub" {
+  name  = "notification-email-sub"
+  topic = google_pubsub_topic.notifications_topic.name
+
+  push_config {
+    push_endpoint = google_cloud_run_v2_service.notification_service.uri
+
+    oidc_token {
+      service_account_email = google_service_account.pubsub_invoker.email
+    }
+  }
+}

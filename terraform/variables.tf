@@ -21,3 +21,19 @@ variable "jwt_secret" {
   sensitive   = true
   description = "Clave secreta para la firma de JWT"
 }
+variable "smtp_user" {
+  type        = string
+  description = "Usuario SMTP para el envío de correos"
+}
+
+variable "smtp_password" {
+  type        = string
+  description = "Contraseña de la cuenta SMTP"
+  sensitive   = true
+}
+
+variable "notification_image" {
+  type        = string
+  description = "Imagen Docker para notification-cloud-run"
+  default     = "gcr.io/google-samples/hello-app:1.0"
+}
