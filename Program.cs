@@ -83,7 +83,7 @@ app.MapPost("api/notifications/send", async (NotificationRequest req, IConfigura
     }
     // Lógica para publicar en Pub/Sub
     return Results.Ok();
-});
+}).AllowAnonymous();
 
 app.UseStaticFiles();
 
