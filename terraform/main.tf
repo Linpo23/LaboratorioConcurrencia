@@ -165,13 +165,10 @@ import {
   to = google_cloud_run_v2_service.api_service
   id = "projects/laboratorio-concurrencia/locations/us-central1/services/api-backend-service"
 }
+
 # Tópico de Pub/Sub para notificaciones
 resource "google_pubsub_topic" "notifications_topic" {
   name = "notification-email-topic"
-
-  lifecycle {
-    ignore_changes = all
-  }
 }
 
 # Servicio Cloud Run para enviar las notificaciones
@@ -193,20 +190,12 @@ resource "google_cloud_run_v2_service" "notification_service" {
       }
     }
   }
-
-  lifecycle {
-    ignore_changes = all
-  }
 }
 
 # Service Account para permitir que Pub/Sub invoque Cloud Run
 resource "google_service_account" "pubsub_invoker" {
   account_id   = "pubsub-cloudrun-invoker"
   display_name = "PubSub Cloud Run Invoker SA"
-
-  lifecycle {
-    ignore_changes = all
-  }
 }
 
 resource "google_cloud_run_v2_service_iam_member" "invoker_role" {

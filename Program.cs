@@ -52,7 +52,7 @@ using (var scope = app.Services.CreateScope())
 }
 
 // 5. Crear notificación de correo (Endpoint Pub/Sub)
-app.MapPost("/api/notifications/send", async (NotificationRequest req, IConfiguration config, ILogger<Program> logger) =>
+app.MapPost("api/notifications/send", async (NotificationRequest req, IConfiguration config, ILogger<Program> logger) =>
 {
     if (string.IsNullOrWhiteSpace(req.Email) ||
         string.IsNullOrWhiteSpace(req.Subject) ||
@@ -83,7 +83,7 @@ app.MapPost("/api/notifications/send", async (NotificationRequest req, IConfigur
     }
     // Lógica para publicar en Pub/Sub
     return Results.Ok();
-}).AllowAnonymous(); // <--- Agregado para evitar problemas de JWT durante las pruebas
+});
 
 app.UseStaticFiles();
 
