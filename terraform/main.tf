@@ -171,7 +171,6 @@ resource "google_cloud_run_v2_service_iam_member" "public_access" {
   member   = "allUsers"
 }
 
-# 6. Pub/Sub y servicio de notificaciones
 
 # Tópico de Pub/Sub para notificaciones
 resource "google_pubsub_topic" "notifications_topic" {
