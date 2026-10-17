@@ -1,7 +1,7 @@
 ﻿variable "gcp_project_id" {
   type        = string
   description = "ID del Proyecto de Google Cloud"
-  default ="laboratorio-concurrencia"
+  default     = "laboratorio-concurrencia"
 }
 
 variable "gcp_region" {
@@ -36,4 +36,10 @@ variable "notification_image" {
   type        = string
   description = "Imagen Docker para notification-cloud-run"
   default     = "gcr.io/google-samples/hello-app:1.0"
+}
+
+variable "api_image_tag" {
+  type        = string
+  description = "Tag de la imagen de la API (en CI se usa el SHA del commit para forzar una revision nueva)"
+  default     = "latest"
 }

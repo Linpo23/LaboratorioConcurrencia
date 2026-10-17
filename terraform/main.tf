@@ -1,6 +1,30 @@
-﻿# Configuración del Proveedor GCP
+terraform {
+  required_version = ">= 1.6"
+
+  required_providers {
+    google = {
+      source  = "hashicorp/google"
+      version = "~> 5.0"
+    }
+  }
+
+  # RECOMENDADO: descomenta esto cuando crees el bucket de state.
+  # Una vez que el primer apply con backend funcione, puedes borrar
+  # todos los bloques "import" de este archivo.
+  #
+  # backend "gcs" {
+  #   bucket = "NOMBRE-DE-TU-BUCKET-TFSTATE"
+  #   prefix = "laboratorio-concurrencia"
+  # }
+}
+
+locals {
+  project_id = "laboratorio-concurrencia"
+}
+
+# Configuración del Proveedor GCP
 provider "google" {
-  project = "laboratorio-concurrencia"
+  project = local.project_id
   region  = var.gcp_region
 }
 
@@ -13,16 +37,18 @@ resource "google_project_service" "apis" {
     "sqladmin.googleapis.com",
     "apigateway.googleapis.com",
     "cloudbuild.googleapis.com",
-    "logging.googleapis.com"
+    "logging.googleapis.com",
+    "pubsub.googleapis.com",
+    "iam.googleapis.com"
   ])
-  project            = "laboratorio-concurrencia"
+  project            = local.project_id
   service            = each.key
   disable_on_destroy = false
 }
 
 # 2. Artifact Registry para imágenes Docker
 resource "google_artifact_registry_repository" "repo" {
-  project       = "laboratorio-concurrencia"
+  project       = local.project_id
   location      = var.gcp_region
   repository_id = "laboratorio-concurrencia-repo"
   description   = "Repositorio Docker para la API .NET"
@@ -32,7 +58,7 @@ resource "google_artifact_registry_repository" "repo" {
 
 # 3. Service Account e IAM Roles
 resource "google_service_account" "app_sa" {
-  project      = "laboratorio-concurrencia"
+  project      = local.project_id
   account_id   = "sa-backend-api"
   display_name = "Service Account para Cloud Run API"
 }
@@ -41,16 +67,17 @@ resource "google_project_iam_member" "sa_roles" {
   for_each = toset([
     "roles/logging.logWriter",
     "roles/secretmanager.secretAccessor",
-    "roles/cloudsql.client"
+    "roles/cloudsql.client",
+    "roles/pubsub.publisher" # la API publica las notificaciones en Pub/Sub
   ])
-  project = "laboratorio-concurrencia"
+  project = local.project_id
   role    = each.key
   member  = "serviceAccount:${google_service_account.app_sa.email}"
 }
 
 # 4. Secret Manager (JWT Secret y DB Connection)
 resource "google_secret_manager_secret" "jwt_secret" {
-  project   = "laboratorio-concurrencia"
+  project   = local.project_id
   secret_id = "jwt-secret"
 
   replication {
@@ -66,7 +93,7 @@ resource "google_secret_manager_secret_version" "jwt_secret_val" {
 }
 
 resource "google_secret_manager_secret" "db_url" {
-  project   = "laboratorio-concurrencia"
+  project   = local.project_id
   secret_id = "database-url"
 
   replication {
@@ -83,7 +110,7 @@ resource "google_secret_manager_secret_version" "db_url_val" {
 
 # 5. Cloud Run Service (.NET API)
 resource "google_cloud_run_v2_service" "api_service" {
-  project  = "laboratorio-concurrencia"
+  project  = local.project_id
   name     = "api-backend-service"
   location = var.gcp_region
   ingress  = "INGRESS_TRAFFIC_ALL"
@@ -92,7 +119,8 @@ resource "google_cloud_run_v2_service" "api_service" {
     service_account = google_service_account.app_sa.email
 
     containers {
-      image = "${var.gcp_region}-docker.pkg.dev/laboratorio-concurrencia/${google_artifact_registry_repository.repo.name}/api:latest"
+      # CORREGIDO: repository_id en lugar de name (name devuelve la ruta completa)
+      image = "${var.gcp_region}-docker.pkg.dev/${local.project_id}/${google_artifact_registry_repository.repo.repository_id}/api:${var.api_image_tag}"
 
       ports {
         container_port = 5030
@@ -127,52 +155,34 @@ resource "google_cloud_run_v2_service" "api_service" {
 
   depends_on = [
     google_project_service.apis,
+    google_project_iam_member.sa_roles,
     google_secret_manager_secret_version.jwt_secret_val,
     google_secret_manager_secret_version.db_url_val
   ]
 }
 
-# Habilitar acceso público no autenticado a Cloud Run
-resource "google_cloud_run_service_iam_member" "public_access" {
-  project  = "laboratorio-concurrencia"
+# Acceso público no autenticado a Cloud Run
+# CORREGIDO: recurso v2 (antes era google_cloud_run_service_iam_member, de v1)
+resource "google_cloud_run_v2_service_iam_member" "public_access" {
+  project  = local.project_id
   location = google_cloud_run_v2_service.api_service.location
-  service  = google_cloud_run_v2_service.api_service.name
+  name     = google_cloud_run_v2_service.api_service.name
   role     = "roles/run.invoker"
   member   = "allUsers"
 }
 
-# BLOQUE ÚNICO DE IMPORTS
-import {
-  to = google_service_account.app_sa
-  id = "projects/laboratorio-concurrencia/serviceAccounts/sa-backend-api@laboratorio-concurrencia.iam.gserviceaccount.com"
-}
-
-import {
-  to = google_secret_manager_secret.jwt_secret
-  id = "projects/laboratorio-concurrencia/secrets/jwt-secret"
-}
-
-import {
-  to = google_secret_manager_secret.db_url
-  id = "projects/laboratorio-concurrencia/secrets/database-url"
-}
-# AGREGAR ESTE BLOQUE:
-import {
-  to = google_artifact_registry_repository.repo
-  id = "projects/laboratorio-concurrencia/locations/us-central1/repositories/laboratorio-concurrencia-repo"
-}
-import {
-  to = google_cloud_run_v2_service.api_service
-  id = "projects/laboratorio-concurrencia/locations/us-central1/services/api-backend-service"
-}
+# 6. Pub/Sub y servicio de notificaciones
 
 # Tópico de Pub/Sub para notificaciones
 resource "google_pubsub_topic" "notifications_topic" {
-  name = "notification-email-topic-v2"
+  project    = local.project_id
+  name       = "notification-email-topic-v2"
+  depends_on = [google_project_service.apis]
 }
 
 # Servicio Cloud Run para enviar las notificaciones
 resource "google_cloud_run_v2_service" "notification_service" {
+  project  = local.project_id
   name     = "notification-cloud-run-v2"
   location = var.gcp_region
 
@@ -190,15 +200,19 @@ resource "google_cloud_run_v2_service" "notification_service" {
       }
     }
   }
+
+  depends_on = [google_project_service.apis]
 }
 
 # Service Account para permitir que Pub/Sub invoque Cloud Run
 resource "google_service_account" "pubsub_invoker" {
+  project      = local.project_id
   account_id   = "pubsub-cloudrun-invoker-v2"
   display_name = "PubSub Cloud Run Invoker SA"
 }
 
 resource "google_cloud_run_v2_service_iam_member" "invoker_role" {
+  project  = local.project_id
   location = google_cloud_run_v2_service.notification_service.location
   name     = google_cloud_run_v2_service.notification_service.name
   role     = "roles/run.invoker"
@@ -207,8 +221,9 @@ resource "google_cloud_run_v2_service_iam_member" "invoker_role" {
 
 # Suscripción Push de Pub/Sub hacia Cloud Run Notificaciones
 resource "google_pubsub_subscription" "notification_sub" {
-  name  = "notification-email-sub-v2"
-  topic = google_pubsub_topic.notifications_topic.name
+  project = local.project_id
+  name    = "notification-email-sub-v2"
+  topic   = google_pubsub_topic.notifications_topic.name
 
   push_config {
     push_endpoint = google_cloud_run_v2_service.notification_service.uri
@@ -218,23 +233,55 @@ resource "google_pubsub_subscription" "notification_sub" {
     }
   }
 }
-# 1. Importar el Topic existente
+
+# ---------------------------------------------------------------------------
+# IMPORTS (temporales, mientras no haya backend remoto)
+# Los ids usan la región literal: es lo más seguro en un bloque import.
+# Si el recurso NO existe en GCP, borra su bloque import y deja que apply lo cree.
+# ---------------------------------------------------------------------------
+
+import {
+  to = google_service_account.app_sa
+  id = "projects/laboratorio-concurrencia/serviceAccounts/sa-backend-api@laboratorio-concurrencia.iam.gserviceaccount.com"
+}
+
+import {
+  to = google_secret_manager_secret.jwt_secret
+  id = "projects/laboratorio-concurrencia/secrets/jwt-secret"
+}
+
+import {
+  to = google_secret_manager_secret.db_url
+  id = "projects/laboratorio-concurrencia/secrets/database-url"
+}
+
+import {
+  to = google_artifact_registry_repository.repo
+  id = "projects/laboratorio-concurrencia/locations/us-central1/repositories/laboratorio-concurrencia-repo"
+}
+
+import {
+  to = google_cloud_run_v2_service.api_service
+  id = "projects/laboratorio-concurrencia/locations/us-central1/services/api-backend-service"
+}
+
 import {
   to = google_pubsub_topic.notifications_topic
   id = "projects/laboratorio-concurrencia/topics/notification-email-topic-v2"
 }
 
-# 2. Importar el Cloud Run existente
+# CORREGIDO: antes decía locations/var.gcp_region (texto literal)
 import {
   to = google_cloud_run_v2_service.notification_service
   id = "projects/laboratorio-concurrencia/locations/us-central1/services/notification-cloud-run-v2"
 }
 
-# 3. Importar la Service Account existente
 import {
   to = google_service_account.pubsub_invoker
   id = "projects/laboratorio-concurrencia/serviceAccounts/pubsub-cloudrun-invoker-v2@laboratorio-concurrencia.iam.gserviceaccount.com"
 }
+
+# NUEVO: causa del error 409 de la suscripción
 import {
   to = google_pubsub_subscription.notification_sub
   id = "projects/laboratorio-concurrencia/subscriptions/notification-email-sub-v2"
