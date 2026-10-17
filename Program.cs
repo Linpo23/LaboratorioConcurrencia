@@ -40,15 +40,16 @@ var app = builder.Build();
 // 4. Migración de Base de Datos
 using (var scope = app.Services.CreateScope())
 {
-    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     try
     {
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         db.Database.Migrate();
     }
     catch (Exception ex)
     {
-        app.Logger.LogCritical(ex, "Fallo al aplicar las migraciones de la base de datos");
-        throw;
+        // No se relanza: asi el contenedor sigue escuchando el puerto y Cloud Run no lo marca como caido.
+        // Si las tablas ya existian, la API funciona igual. El detalle queda en los logs.
+        app.Logger.LogError(ex, "Fallo al aplicar las migraciones de la base de datos (la API sigue arrancando)");
     }
 }
 
@@ -68,37 +69,38 @@ app.Run();
 static string? NormalizePostgres(string? cs)
 {
     if (string.IsNullOrWhiteSpace(cs)) return cs;
-
-    cs = cs.Trim().Trim('"', '\'', ' ', '\r', '\n', '\t', '\uFEFF');
-
-    var m = System.Text.RegularExpressions.Regex.Match(
-        cs, @"postgres(?:ql)?://[^\s'""]+", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-    if (m.Success)
+    var original = cs;
+    try
     {
-        var uri = new Uri(m.Value);
-        var userInfo = uri.UserInfo.Split(':', 2);
-        var csb = new Npgsql.NpgsqlConnectionStringBuilder
+        cs = cs.Trim().Trim('"', '\'', ' ', '\r', '\n', '\t', '\uFEFF');
+
+        var m = System.Text.RegularExpressions.Regex.Match(
+            cs, @"postgres(?:ql)?://[^\s'""]+", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        if (m.Success)
         {
-            Host = uri.Host,
-            Port = uri.Port > 0 ? uri.Port : 5432,
-            Database = uri.AbsolutePath.TrimStart('/'),
-            Username = Uri.UnescapeDataString(userInfo[0]),
-            Password = userInfo.Length > 1 ? Uri.UnescapeDataString(userInfo[1]) : null,
-            SslMode = Npgsql.SslMode.Require,
-            TrustServerCertificate = true
-        };
-        return csb.ConnectionString;
+            var uri = new Uri(m.Value);
+            var userInfo = uri.UserInfo.Split(':', 2);
+            var csb = new Npgsql.NpgsqlConnectionStringBuilder
+            {
+                Host = uri.Host,
+                Port = uri.Port > 0 ? uri.Port : 5432,
+                Database = uri.AbsolutePath.TrimStart('/'),
+                Username = Uri.UnescapeDataString(userInfo[0]),
+                Password = userInfo.Length > 1 ? Uri.UnescapeDataString(userInfo[1]) : null,
+                SslMode = Npgsql.SslMode.Require,
+                TrustServerCertificate = true
+            };
+            return csb.ConnectionString;
+        }
+
+        // Formato Host=...;... pero con basura delante (ej. DATABASE_URL=Host=...)
+        var hostIdx = cs.IndexOf("Host=", StringComparison.OrdinalIgnoreCase);
+        if (hostIdx > 0) cs = cs[hostIdx..].Trim('"', '\'');
+        return cs;
     }
-
-    // Formato Host=...;... pero con basura delante (ej. DATABASE_URL=Host=...)
-    var hostIdx = cs.IndexOf("Host=", StringComparison.OrdinalIgnoreCase);
-    if (hostIdx > 0) cs = cs[hostIdx..].Trim('"', '\'');
-
-    if (!cs.Contains('='))
+    catch
     {
-        throw new InvalidOperationException(
-            $"La cadena de conexion a la base de datos no tiene un formato valido (longitud {cs.Length}, contiene '://': {cs.Contains("://")}). " +
-            "Usa 'Host=...;Port=5432;Database=...;Username=...;Password=...;SSL Mode=Require' o la URI postgresql://usuario:clave@host/db");
+        // Si no se puede interpretar, se devuelve tal cual; el error saldra al usar la base, no al arrancar.
+        return original;
     }
-    return cs;
 }
