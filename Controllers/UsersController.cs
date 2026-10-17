@@ -37,7 +37,7 @@ public class UsersController : ControllerBase
 
     // 3. CREATE (POST: api/users)
     [HttpPost]
-    //[AllowAnonymous] // Permite registro inicial sin hay token 
+    [AllowAnonymous] // Permite registro inicial sin token 
     public async Task<IActionResult> CreateUser([FromBody] CreateUserDto dto)
     {
         var nuevoUsuario = new User
